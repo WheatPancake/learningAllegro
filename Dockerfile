@@ -13,14 +13,14 @@ RUN apt-get update && apt-get install -y \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
-# Enable Apache mod_rewrite (required for WordPress pretty permalinks)
-# Remove event/worker MPM symlinks directly — a2dismod silently fails when
-# a module is compiled in statically, leaving Apache with two MPMs loaded.
-RUN rm -f /etc/apache2/mods-enabled/mpm_event.load \
-          /etc/apache2/mods-enabled/mpm_event.conf \
-          /etc/apache2/mods-enabled/mpm_worker.load \
-          /etc/apache2/mods-enabled/mpm_worker.conf \
-    && a2enmod rewrite headers
+# Remove all dynamic MPM module files so Apache uses its compiled-in default.
+# The base image can have both mpm_prefork and mpm_event enabled simultaneously
+# which causes the "More than one MPM loaded" crash on startup.
+RUN rm -f /etc/apache2/mods-enabled/mpm_*.load \
+          /etc/apache2/mods-enabled/mpm_*.conf
+
+# Enable required modules (remoteip needed for RemoteIPHeader in apache.conf)
+RUN a2enmod remoteip rewrite headers
 
 # Copy custom Apache config
 COPY apache.conf /etc/apache2/conf-available/wordpress.conf
