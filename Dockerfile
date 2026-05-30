@@ -13,12 +13,16 @@ RUN apt-get update && apt-get install -y \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
-# Enable required modules (remoteip needed for RemoteIPHeader in apache.conf)
-RUN a2enmod remoteip rewrite headers
-
-# CMD wrapper: fixes MPM conflict at runtime and prints diagnostics before Apache starts
-COPY docker-cmd.sh /usr/local/bin/docker-cmd.sh
-RUN chmod +x /usr/local/bin/docker-cmd.sh
+# Fix MPM conflict at build time:
+#   1. Remove any mpm_* symlinks from mods-enabled
+#   2. Strip inline LoadModule mpm_* lines from apache2.conf (source of the
+#      duplicate when symlinks alone are not the culprit)
+#   3. Re-enable only mpm_prefork (required for mod_php)
+#   4. Enable remoteip (for RemoteIPHeader), rewrite, and headers
+RUN rm -f /etc/apache2/mods-enabled/mpm_*.load \
+          /etc/apache2/mods-enabled/mpm_*.conf \
+    && sed -i '/LoadModule mpm_/d' /etc/apache2/apache2.conf \
+    && a2enmod mpm_prefork remoteip rewrite headers
 
 # Copy custom Apache config
 COPY apache.conf /etc/apache2/conf-available/wordpress.conf
@@ -42,4 +46,3 @@ RUN curl -sO https://raw.githubusercontent.com/wp-cli/builds/gh-pages/phar/wp-cl
     && mv wp-cli.phar /usr/local/bin/wp
 
 EXPOSE 80
-CMD ["/usr/local/bin/docker-cmd.sh"]
