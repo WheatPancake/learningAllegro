@@ -13,16 +13,8 @@ RUN apt-get update && apt-get install -y \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
-# Fix MPM conflict at build time:
-#   1. Remove any mpm_* symlinks from mods-enabled
-#   2. Strip inline LoadModule mpm_* lines from apache2.conf (source of the
-#      duplicate when symlinks alone are not the culprit)
-#   3. Re-enable only mpm_prefork (required for mod_php)
-#   4. Enable remoteip (for RemoteIPHeader), rewrite, and headers
-RUN rm -f /etc/apache2/mods-enabled/mpm_*.load \
-          /etc/apache2/mods-enabled/mpm_*.conf \
-    && sed -i '/LoadModule mpm_/d' /etc/apache2/apache2.conf \
-    && a2enmod mpm_prefork remoteip rewrite headers
+# Enable required modules
+RUN a2enmod remoteip rewrite headers
 
 # Copy custom Apache config
 COPY apache.conf /etc/apache2/conf-available/wordpress.conf
@@ -44,5 +36,12 @@ RUN { \
 RUN curl -sO https://raw.githubusercontent.com/wp-cli/builds/gh-pages/phar/wp-cli.phar \
     && chmod +x wp-cli.phar \
     && mv wp-cli.phar /usr/local/bin/wp
+
+# Override apache2-foreground to fix the MPM conflict at runtime, immediately
+# before Apache starts. Build-time fixes don't survive because the base image
+# restores MPM state during its own entrypoint. This is the last call point
+# before apache2 is exec'd, so it's the reliable place to fix it.
+COPY apache2-foreground /usr/local/bin/apache2-foreground
+RUN chmod +x /usr/local/bin/apache2-foreground
 
 EXPOSE 80
