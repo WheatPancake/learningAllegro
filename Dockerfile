@@ -13,14 +13,12 @@ RUN apt-get update && apt-get install -y \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
-# Remove all dynamic MPM module files so Apache uses its compiled-in default.
-# The base image can have both mpm_prefork and mpm_event enabled simultaneously
-# which causes the "More than one MPM loaded" crash on startup.
-RUN rm -f /etc/apache2/mods-enabled/mpm_*.load \
-          /etc/apache2/mods-enabled/mpm_*.conf
-
 # Enable required modules (remoteip needed for RemoteIPHeader in apache.conf)
 RUN a2enmod remoteip rewrite headers
+
+# CMD wrapper: fixes MPM conflict at runtime and prints diagnostics before Apache starts
+COPY docker-cmd.sh /usr/local/bin/docker-cmd.sh
+RUN chmod +x /usr/local/bin/docker-cmd.sh
 
 # Copy custom Apache config
 COPY apache.conf /etc/apache2/conf-available/wordpress.conf
@@ -44,3 +42,4 @@ RUN curl -sO https://raw.githubusercontent.com/wp-cli/builds/gh-pages/phar/wp-cl
     && mv wp-cli.phar /usr/local/bin/wp
 
 EXPOSE 80
+CMD ["/usr/local/bin/docker-cmd.sh"]
