@@ -14,7 +14,9 @@ RUN apt-get update && apt-get install -y \
     && rm -rf /var/lib/apt/lists/*
 
 # Enable Apache mod_rewrite (required for WordPress pretty permalinks)
-RUN a2enmod rewrite headers
+# Disable event/worker MPMs first — prefork is required for mod_php
+RUN a2dismod mpm_event mpm_worker 2>/dev/null || true && \
+    a2enmod mpm_prefork rewrite headers
 
 # Copy custom Apache config
 COPY apache.conf /etc/apache2/conf-available/wordpress.conf
