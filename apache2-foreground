@@ -1,10 +1,10 @@
 #!/bin/bash
 set -e
 
+# Source Apache environment variables (defines APACHE_RUN_DIR, APACHE_LOG_DIR, etc.)
+. /etc/apache2/envvars
+
 # Fix MPM conflict right before Apache starts.
-# The base image may have both mpm_prefork and mpm_event active at runtime
-# regardless of build-time changes. Fixing it here is the last point before
-# apache2 is exec'd and the only approach confirmed to work on Railway.
 rm -f /etc/apache2/mods-enabled/mpm_*.load \
       /etc/apache2/mods-enabled/mpm_*.conf
 a2enmod mpm_prefork 2>/dev/null
