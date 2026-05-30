@@ -1,0 +1,17 @@
+# Local secrets — never commit
+.env
+
+# macOS
+.DS_Store
+
+# DB exports
+*.sql
+
+# Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Logs
+*.log
